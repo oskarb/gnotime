@@ -176,6 +176,15 @@ AC_SUBST(LIBGNOMEVFS_LIBS)
 
 
 dnl *******************************
+dnl WebKitGTK
+dnl *******************************
+
+PKG_CHECK_MODULES(WEBKITGTK, webkit-1.0)
+AC_SUBST(WEBKITGTK_CFLAGS)
+AC_SUBST(WEBKITGTK_LIBS)
+
+
+dnl *******************************
 dnl gtkhtml -- ask pkgconfig for some variant of gtkhtml3
 dnl *******************************
 
@@ -336,7 +345,8 @@ echo "LIBDBUS_LIBS : $LIBDBUS_LIBS"
 echo "LIBDBUS_CFLAGS : $LIBDBUS_CFLAGS"
 echo "XSS_EXTENSION_CFLAGS : $XSS_EXTENSION_CFLAGS"
 echo "XSS_EXTENSION_LIBS : $XSS_EXTENSION_LIBS"
-echo ""
+echo "WEBKITGTK_CFLAGS : $WEBKITGTK_CFLAGS"
+echo "WEBKITGTK_LIBS: $WEBKITGTK_LIBS"
 
 dnl <= Prefixes =>
 echo "prefix : $prefix"

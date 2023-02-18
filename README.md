@@ -73,6 +73,7 @@ libgnomeui-dev
 libgnomevfs2-dev
 libgtk2.0-dev
 libgtkhtml3.14-dev
+libwebkitgtk-dev
 libqof-dev
 libxss-dev
 libxml2-dev
