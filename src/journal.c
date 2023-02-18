@@ -22,7 +22,7 @@
 
 #include <glade/glade.h>
 #include <gnome.h>
-#include <gtkhtml/gtkhtml.h>
+#include <webkit/webkit.h>
 #include <libgnomevfs/gnome-vfs.h>
 #include <stdio.h>
 #include <string.h>
@@ -49,8 +49,8 @@
 typedef struct wiggy_s
 {
 	GttGhtml  *gh;
-	GtkHTML   *html;
-	GtkHTMLStream  *html_stream;
+	WebKitWebView   *webview;
+	GString *html_content;
 	GtkWidget *top;
 	GttProject  *prj;
 	char        *filepath;  /* file containing report template */
@@ -97,8 +97,10 @@ wiggy_open (GttGhtml *pl, gpointer ud)
 {
 	Wiggy *wig = (Wiggy *) ud;
 
-	/* open the browser for writing */
-	wig->html_stream = gtk_html_begin (wig->html);
+	if (wig->html_content != NULL)
+		g_string_free(wig->html_content, TRUE);
+
+	wig->html_content = g_string_new(NULL);
 }
 
 static void
@@ -106,8 +108,13 @@ wiggy_close (GttGhtml *pl, gpointer ud)
 {
 	Wiggy *wig = (Wiggy *) ud;
 
-	/* close the browser stream */
-	gtk_html_end (wig->html, wig->html_stream, GTK_HTML_STREAM_OK);
+	// Finish the string and load it up into the web view.
+	gchar *str = g_string_free(wig->html_content, FALSE);
+	wig->html_content = NULL;
+
+	webkit_web_view_load_string(wig->webview, str, "text/html", NULL, NULL);
+
+	g_free(str);
 }
 
 static void
@@ -115,19 +122,17 @@ wiggy_write (GttGhtml *pl, const char *str, size_t len, gpointer ud)
 {
 	Wiggy *wig = (Wiggy *) ud;
 
-	/* write to the browser stream */
-	gtk_html_write (wig->html, wig->html_stream, str, len);
+	// Append to the HTML content buffer.
+	g_string_append_len(wig->html_content, str, len);
 }
 
 static void
 wiggy_error (GttGhtml *pl, int err, const char * msg, gpointer ud)
 {
 	Wiggy *wig = (Wiggy *) ud;
-	GtkHTML *html = wig->html;
-	GtkHTMLStream *stream;
 	char buff[1000], *p;
 
-	stream = gtk_html_begin (html);
+	// TODO: Rewrite using GString to avoid fixed buffer size for unknown content size.
 
 	if (404 == err)
 	{
@@ -139,7 +144,6 @@ wiggy_error (GttGhtml *pl, int err, const char * msg, gpointer ud)
 		             (msg? (char*) msg : _("(null)")));
 
 		p = g_stpcpy (p, "</body></html>");
-		gtk_html_write (html, stream, buff, p-buff);
 	}
 	else
 	{
@@ -147,11 +151,9 @@ wiggy_error (GttGhtml *pl, int err, const char * msg, gpointer ud)
 		p = g_stpcpy (p, "<html><body><h1>");
 		p = g_stpcpy (p, _("Unkown Error"));
 		p = g_stpcpy (p, "</h1></body></html>");
-		gtk_html_write (html, stream, buff, p-buff);
 	}
 
-	gtk_html_end (html, stream, GTK_HTML_STREAM_OK);
-
+	webkit_web_view_load_string(wig->webview, buff, "text/html", NULL, NULL);
 }
 
 /* ============================================================== */
@@ -735,7 +737,7 @@ on_close_clicked_cb (GtkWidget *w, gpointer data)
 	g_free (wig->filepath);
 
 	wig->gh = NULL;
-	wig->html = NULL;
+	wig->webview = NULL;
 	g_free (wig);
 }
 
@@ -755,7 +757,7 @@ on_refresh_clicked_cb (GtkWidget *w, gpointer data)
 /* html events */
 
 static void
-html_link_clicked_cb(GtkHTML *doc, const gchar * url, gpointer data)
+html_link_clicked_cb(WebKitWebView *webview, const gchar * url, gpointer data)
 {
 	Wiggy *wig = (Wiggy *) data;
 	gpointer addr = NULL;
@@ -805,9 +807,10 @@ html_link_clicked_cb(GtkHTML *doc, const gchar * url, gpointer data)
 /* ============================================================== */
 
 static void
-html_url_requested_cb(GtkHTML *doc, const gchar * url,
-                      GtkHTMLStream *handle, gpointer data)
+html_url_requested_cb(WebKitWebView *webview, const gchar * url,
+                      /*GtkHTMLStream *handle,*/ gpointer data)
 {
+	/*
 	Wiggy *wig = data;
 	const char * path = gtt_ghtml_resolve_path (url, wig->filepath);
 	if (!path) return;
@@ -828,6 +831,7 @@ html_url_requested_cb(GtkHTML *doc, const gchar * url,
 		result = gnome_vfs_read (vfs, buff, BSZ, &bytes_read);
 	}
 	gnome_vfs_close (vfs);
+	*/
 }
 
 /* ============================================================== */
@@ -936,7 +940,7 @@ hover_loose_focus(GtkWidget *w, GdkEventFocus *ev, gpointer data)
 }
 
 static void
-html_on_url_cb(GtkHTML *doc, const gchar * url, gpointer data)
+html_on_url_cb(WebKitWebView *webview, const gchar * url, gpointer data)
 {
 	Wiggy *wig = data;
 	if (NULL == wig->top) return;
@@ -971,7 +975,7 @@ html_on_url_cb(GtkHTML *doc, const gchar * url, gpointer data)
 		gtk_widget_show (label);
 
 		/* So that we can loose focus later */
-		gtk_window_set_focus (GTK_WINDOW(wig->top), GTK_WIDGET(wig->html));
+		gtk_window_set_focus (GTK_WINDOW(wig->top), GTK_WIDGET(wig->webview));
 
 		/* Set up in initial default, so later move works. */
 		int px=0, py=0, rx=0, ry=0;
@@ -1074,7 +1078,7 @@ perform_form_query (KvpFrame *kvpf)
 }
 
 static void
-submit_clicked_cb(GtkHTML * doc,
+submit_clicked_cb(WebKitWebView * webview,
                   const gchar * method,
                   const gchar * url,
                   const gchar * encoding,
@@ -1141,9 +1145,9 @@ do_show_report (const char * report, GttPlugin *plg,
 	if (plg) gtk_window_set_title (GTK_WINDOW(jnl_top), plg->name);
 
 	/* Create browser, plug it into the viewport */
-	wig->html = GTK_HTML(gtk_html_new());
-	gtk_html_set_editable (wig->html, FALSE);
-	gtk_container_add(GTK_CONTAINER(jnl_viewport), GTK_WIDGET(wig->html));
+	wig->webview = WEBKIT_WEB_VIEW(webkit_web_view_new());
+	webkit_web_view_set_editable(WEBKIT_WEB_VIEW(wig->webview), FALSE);
+	gtk_container_add(GTK_CONTAINER(jnl_viewport), GTK_WIDGET(wig->webview));
 
 	wig->gh = gtt_ghtml_new();
 	gtt_ghtml_set_stream (wig->gh, wig, wiggy_open, wiggy_write,
@@ -1172,22 +1176,25 @@ do_show_report (const char * report, GttPlugin *plg,
 	g_signal_connect (G_OBJECT(wig->top), "destroy",
 			G_CALLBACK (destroy_cb), wig);
 
-	g_signal_connect (G_OBJECT(wig->html), "link_clicked",
+	// I think all of these become navigation-policy-decision-requested
+	/*
+	g_signal_connect (G_OBJECT(wig->webview), "link_clicked",
 			G_CALLBACK (html_link_clicked_cb), wig);
 
-	g_signal_connect (G_OBJECT(wig->html), "submit",
+	g_signal_connect (G_OBJECT(wig->webview), "submit",
 			G_CALLBACK (submit_clicked_cb), wig);
 
-	g_signal_connect (G_OBJECT(wig->html), "url_requested",
+	g_signal_connect (G_OBJECT(wig->webview), "url_requested",
 			G_CALLBACK (html_url_requested_cb), wig);
 
-	g_signal_connect(G_OBJECT(wig->html), "on_url",
+	g_signal_connect(G_OBJECT(wig->webview), "on_url",
 		G_CALLBACK(html_on_url_cb), wig);
 
-	g_signal_connect(G_OBJECT(wig->html), "focus_out_event",
+	g_signal_connect(G_OBJECT(wig->webview), "focus_out_event",
 		G_CALLBACK(hover_loose_focus), wig);
+	*/
 
-	gtk_widget_show (GTK_WIDGET(wig->html));
+	gtk_widget_show (GTK_WIDGET(wig->webview));
 	gtk_widget_show (jnl_top);
 
 	/* ---------------------------------------------------- */
