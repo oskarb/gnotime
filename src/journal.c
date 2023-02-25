@@ -756,10 +756,22 @@ on_refresh_clicked_cb (GtkWidget *w, gpointer data)
 /* ============================================================== */
 /* html events */
 
-static void
-html_link_clicked_cb(WebKitWebView *webview, const gchar * url, gpointer data)
+static gboolean
+html_navigation_policy_decision_requested_cb (
+    WebKitWebView *const webview, WebKitWebFrame *const frame,
+    WebKitNetworkRequest *const request,
+    WebKitWebNavigationAction *const navigation_action,
+    WebKitWebPolicyDecision *const policy_decision, gpointer const user_data)
 {
-	Wiggy *wig = (Wiggy *) data;
+	const gchar *const url = webkit_network_request_get_uri (request);
+
+	if (0 == g_strcmp0 ("about:blank", url))
+	{
+		webkit_web_policy_decision_use (policy_decision);
+		return TRUE;
+	}
+
+	Wiggy *const wig = (Wiggy *)user_data;
 	gpointer addr = NULL;
 	char *str;
 
@@ -802,6 +814,10 @@ html_link_clicked_cb(WebKitWebView *webview, const gchar * url, gpointer data)
 		 * deal with them more or less appropriately.  */
 		do_show_report (url, NULL, NULL, NULL, FALSE, NULL);
 	}
+
+	webkit_web_policy_decision_ignore (policy_decision);
+
+	return TRUE;
 }
 
 /* ============================================================== */
@@ -835,7 +851,7 @@ html_url_requested_cb(WebKitWebView *webview, const gchar * url,
 }
 
 /* ============================================================== */
-/* Display a tool-tip type of message when the user pauses thier
+/* Display a tool-tip type of message when the user pauses their
  * mouse over a URL.   If mouse pointer doesn't move for a
  * second, popup a window.
  *
@@ -940,9 +956,11 @@ hover_loose_focus(GtkWidget *w, GdkEventFocus *ev, gpointer data)
 }
 
 static void
-html_on_url_cb(WebKitWebView *webview, const gchar * url, gpointer data)
+html_hovering_over_link_cb (WebKitWebView *const webview,
+                            const gchar *const title, gchar *const uri,
+                            gpointer const user_data)
 {
-	Wiggy *wig = data;
+	Wiggy *const wig = user_data;
 	if (NULL == wig->top) return;
 
 	/* Create and initialize the hover-help window */
@@ -984,9 +1002,9 @@ html_on_url_cb(WebKitWebView *webview, const gchar * url, gpointer data)
 		gtk_window_move (wino, rx+px, ry+py);
 	}
 
-	if (url)
+	if (uri)
 	{
-		char * msg = get_hover_msg (url);
+		char * msg = get_hover_msg (uri);
 		gtk_label_set_markup (wig->hover_label, msg);
 		gtk_container_resize_children (GTK_CONTAINER(wig->hover_help_window));
 		gtk_container_check_resize (GTK_CONTAINER(wig->hover_help_window));
@@ -994,7 +1012,7 @@ html_on_url_cb(WebKitWebView *webview, const gchar * url, gpointer data)
 	}
 
 	/* If hovering over a URL, bring up the help popup after one second. */
-	if (url)
+	if (uri)
 	{
 		/* 600 milliseconds == 0.6 second */
 		wig->hover_timeout_id = gtk_timeout_add (600, hover_timer_func, wig);
@@ -1176,23 +1194,24 @@ do_show_report (const char * report, GttPlugin *plg,
 	g_signal_connect (G_OBJECT(wig->top), "destroy",
 			G_CALLBACK (destroy_cb), wig);
 
-	// I think all of these become navigation-policy-decision-requested
-	/*
-	g_signal_connect (G_OBJECT(wig->webview), "link_clicked",
-			G_CALLBACK (html_link_clicked_cb), wig);
+	g_signal_connect (G_OBJECT (wig->webview),
+	                  "navigation-policy-decision-requested",
+	                  G_CALLBACK (html_navigation_policy_decision_requested_cb),
+	                  wig);
 
+	/*
 	g_signal_connect (G_OBJECT(wig->webview), "submit",
 			G_CALLBACK (submit_clicked_cb), wig);
 
 	g_signal_connect (G_OBJECT(wig->webview), "url_requested",
 			G_CALLBACK (html_url_requested_cb), wig);
+	*/
 
-	g_signal_connect(G_OBJECT(wig->webview), "on_url",
-		G_CALLBACK(html_on_url_cb), wig);
+	g_signal_connect (G_OBJECT (wig->webview), "hovering-over-link",
+	                  G_CALLBACK (html_hovering_over_link_cb), wig);
 
 	g_signal_connect(G_OBJECT(wig->webview), "focus_out_event",
-		G_CALLBACK(hover_loose_focus), wig);
-	*/
+	                 G_CALLBACK(hover_loose_focus), wig);
 
 	gtk_widget_show (GTK_WIDGET(wig->webview));
 	gtk_widget_show (jnl_top);
