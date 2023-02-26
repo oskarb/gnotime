@@ -1202,10 +1202,19 @@ do_show_report (const char * report, GttPlugin *plg,
 	/*
 	g_signal_connect (G_OBJECT(wig->webview), "submit",
 			G_CALLBACK (submit_clicked_cb), wig);
-
-	g_signal_connect (G_OBJECT(wig->webview), "url_requested",
-			G_CALLBACK (html_url_requested_cb), wig);
 	*/
+
+	/* This seems to be used to load external resources (e.g. icons)
+	 * Maybe a replacement involves webkitgtk's signal resource-request-starting,
+	 * or maybe it's a matter of setting a good file:// base uri when
+	 * we set the content, or maybe we should use a data-uri to embed it, which
+	 * should work better for saving the report to an HTML file also, as
+	 * viewing the saved file would not (robustly) pick up an external image.
+	 * Or we can simply drop the logo from the reports and have a simple text
+	 * message instad.
+	 */
+	// g_signal_connect (G_OBJECT(wig->webview), "url_requested",
+	//		G_CALLBACK (html_url_requested_cb), wig);
 
 	g_signal_connect (G_OBJECT (wig->webview), "hovering-over-link",
 	                  G_CALLBACK (html_hovering_over_link_cb), wig);
