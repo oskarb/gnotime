@@ -130,30 +130,28 @@ static void
 wiggy_error (GttGhtml *pl, int err, const char * msg, gpointer ud)
 {
 	Wiggy *wig = (Wiggy *) ud;
-	char buff[1000], *p;
 
-	// TODO: Rewrite using GString to avoid fixed buffer size for unknown content size.
+	GString *stream = g_string_new (NULL);
 
 	if (404 == err)
 	{
-		p = buff;
-		p = g_stpcpy (p, "<html><body><h1>");
-		p = g_stpcpy (p, _("Error 404 Not Found"));
-		p = g_stpcpy (p, "</h1>");
-		p += sprintf (p, _("The file %s was not found."),
-		             (msg? (char*) msg : _("(null)")));
-
-		p = g_stpcpy (p, "</body></html>");
+		g_string_append (stream, "<html><body><h1>");
+		g_string_append (stream, _("Error 404 Not Found"));
+		g_string_append (stream, "</h1>");
+		g_string_append_printf (stream, _("The file %s was not found."),
+		                 (msg ? (char *)msg : _("(null)")));
+		g_string_append (stream, "</body></html>");
 	}
 	else
 	{
-		p = buff;
-		p = g_stpcpy (p, "<html><body><h1>");
-		p = g_stpcpy (p, _("Unkown Error"));
-		p = g_stpcpy (p, "</h1></body></html>");
+		g_string_append (stream, "<html><body><h1>");
+		g_string_append (stream, _("Unkown Error"));
+		g_string_append (stream, "</h1></body></html>");
 	}
 
-	webkit_web_view_load_string(wig->web_view, buff, "text/html", NULL, NULL);
+	webkit_web_view_load_string (wig->web_view, stream->str, "text/html", NULL, NULL);
+
+	g_string_free (stream, TRUE);
 }
 
 /* ============================================================== */
