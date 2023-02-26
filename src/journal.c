@@ -49,7 +49,7 @@
 typedef struct wiggy_s
 {
 	GttGhtml  *gh;
-	WebKitWebView   *webview;
+	WebKitWebView *web_view;
 	GString *html_content;
 	GtkWidget *top;
 	GttProject  *prj;
@@ -112,7 +112,7 @@ wiggy_close (GttGhtml *pl, gpointer ud)
 	gchar *str = g_string_free(wig->html_content, FALSE);
 	wig->html_content = NULL;
 
-	webkit_web_view_load_string(wig->webview, str, "text/html", NULL, NULL);
+	webkit_web_view_load_string(wig->web_view, str, "text/html", NULL, NULL);
 
 	g_free(str);
 }
@@ -153,7 +153,7 @@ wiggy_error (GttGhtml *pl, int err, const char * msg, gpointer ud)
 		p = g_stpcpy (p, "</h1></body></html>");
 	}
 
-	webkit_web_view_load_string(wig->webview, buff, "text/html", NULL, NULL);
+	webkit_web_view_load_string(wig->web_view, buff, "text/html", NULL, NULL);
 }
 
 /* ============================================================== */
@@ -737,7 +737,7 @@ on_close_clicked_cb (GtkWidget *w, gpointer data)
 	g_free (wig->filepath);
 
 	wig->gh = NULL;
-	wig->webview = NULL;
+	wig->web_view = NULL;
 	g_free (wig);
 }
 
@@ -758,7 +758,7 @@ on_refresh_clicked_cb (GtkWidget *w, gpointer data)
 
 static gboolean
 html_navigation_policy_decision_requested_cb (
-    WebKitWebView *const webview, WebKitWebFrame *const frame,
+    WebKitWebView *const web_view, WebKitWebFrame *const frame,
     WebKitNetworkRequest *const request,
     WebKitWebNavigationAction *const navigation_action,
     WebKitWebPolicyDecision *const policy_decision, gpointer const user_data)
@@ -822,11 +822,12 @@ html_navigation_policy_decision_requested_cb (
 
 /* ============================================================== */
 
+/* This was used with GtkHtml to load the GnoTime logo.
+   Have not figured it out for WebkitGtk yet. Might just drop the logo...
 static void
-html_url_requested_cb(WebKitWebView *webview, const gchar * url,
-                      /*GtkHTMLStream *handle,*/ gpointer data)
+html_url_requested_cb(WebKitWebView *web_view, const gchar * url,
+                      GtkHTMLStream *handle, gpointer data)
 {
-	/*
 	Wiggy *wig = data;
 	const char * path = gtt_ghtml_resolve_path (url, wig->filepath);
 	if (!path) return;
@@ -847,8 +848,8 @@ html_url_requested_cb(WebKitWebView *webview, const gchar * url,
 		result = gnome_vfs_read (vfs, buff, BSZ, &bytes_read);
 	}
 	gnome_vfs_close (vfs);
-	*/
 }
+*/
 
 /* ============================================================== */
 /* Display a tool-tip type of message when the user pauses their
@@ -956,7 +957,7 @@ hover_loose_focus(GtkWidget *w, GdkEventFocus *ev, gpointer data)
 }
 
 static void
-html_hovering_over_link_cb (WebKitWebView *const webview,
+html_hovering_over_link_cb (WebKitWebView *const web_view,
                             const gchar *const title, gchar *const uri,
                             gpointer const user_data)
 {
@@ -993,7 +994,7 @@ html_hovering_over_link_cb (WebKitWebView *const webview,
 		gtk_widget_show (label);
 
 		/* So that we can loose focus later */
-		gtk_window_set_focus (GTK_WINDOW(wig->top), GTK_WIDGET(wig->webview));
+		gtk_window_set_focus (GTK_WINDOW(wig->top), GTK_WIDGET(wig->web_view));
 
 		/* Set up in initial default, so later move works. */
 		int px=0, py=0, rx=0, ry=0;
@@ -1096,7 +1097,7 @@ perform_form_query (KvpFrame *kvpf)
 }
 
 static void
-submit_clicked_cb(WebKitWebView * webview,
+submit_clicked_cb(WebKitWebView * web_view,
                   const gchar * method,
                   const gchar * url,
                   const gchar * encoding,
@@ -1163,9 +1164,9 @@ do_show_report (const char * report, GttPlugin *plg,
 	if (plg) gtk_window_set_title (GTK_WINDOW(jnl_top), plg->name);
 
 	/* Create browser, plug it into the viewport */
-	wig->webview = WEBKIT_WEB_VIEW(webkit_web_view_new());
-	webkit_web_view_set_editable(WEBKIT_WEB_VIEW(wig->webview), FALSE);
-	gtk_container_add(GTK_CONTAINER(jnl_viewport), GTK_WIDGET(wig->webview));
+	wig->web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
+	webkit_web_view_set_editable(WEBKIT_WEB_VIEW(wig->web_view), FALSE);
+	gtk_container_add(GTK_CONTAINER(jnl_viewport), GTK_WIDGET(wig->web_view));
 
 	wig->gh = gtt_ghtml_new();
 	gtt_ghtml_set_stream (wig->gh, wig, wiggy_open, wiggy_write,
@@ -1194,13 +1195,13 @@ do_show_report (const char * report, GttPlugin *plg,
 	g_signal_connect (G_OBJECT(wig->top), "destroy",
 			G_CALLBACK (destroy_cb), wig);
 
-	g_signal_connect (G_OBJECT (wig->webview),
+	g_signal_connect (G_OBJECT (wig->web_view),
 	                  "navigation-policy-decision-requested",
 	                  G_CALLBACK (html_navigation_policy_decision_requested_cb),
 	                  wig);
 
 	/*
-	g_signal_connect (G_OBJECT(wig->webview), "submit",
+	g_signal_connect (G_OBJECT(wig->web_view), "submit",
 			G_CALLBACK (submit_clicked_cb), wig);
 	*/
 
@@ -1213,16 +1214,16 @@ do_show_report (const char * report, GttPlugin *plg,
 	 * Or we can simply drop the logo from the reports and have a simple text
 	 * message instad.
 	 */
-	// g_signal_connect (G_OBJECT(wig->webview), "url_requested",
+	// g_signal_connect (G_OBJECT(wig->web_view), "url_requested",
 	//		G_CALLBACK (html_url_requested_cb), wig);
 
-	g_signal_connect (G_OBJECT (wig->webview), "hovering-over-link",
+	g_signal_connect (G_OBJECT (wig->web_view), "hovering-over-link",
 	                  G_CALLBACK (html_hovering_over_link_cb), wig);
 
-	g_signal_connect(G_OBJECT(wig->webview), "focus_out_event",
+	g_signal_connect(G_OBJECT(wig->web_view), "focus_out_event",
 	                 G_CALLBACK(hover_loose_focus), wig);
 
-	gtk_widget_show (GTK_WIDGET(wig->webview));
+	gtk_widget_show (GTK_WIDGET(wig->web_view));
 	gtk_widget_show (jnl_top);
 
 	/* ---------------------------------------------------- */
