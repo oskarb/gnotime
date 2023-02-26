@@ -1173,8 +1173,8 @@ do_show_report (const char * report, GttPlugin *plg,
 	if (plg) gtk_window_set_title (GTK_WINDOW(jnl_top), plg->name);
 
 	/* Create browser, plug it into the viewport */
-	wig->web_view = WEBKIT_WEB_VIEW(webkit_web_view_new());
-	webkit_web_view_set_editable(WEBKIT_WEB_VIEW(wig->web_view), FALSE);
+	wig->web_view = WEBKIT_WEB_VIEW (webkit_web_view_new());
+	webkit_web_view_set_editable (wig->web_view, FALSE);
 	gtk_container_add(GTK_CONTAINER(jnl_viewport), GTK_WIDGET(wig->web_view));
 
 	wig->gh = gtt_ghtml_new();
