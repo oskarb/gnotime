@@ -98,7 +98,6 @@ AM_CFLAGS = -g -Wall     \
 	${LIBGNOMEUI_CFLAGS}     \
 	${GCONF_CFLAGS}       \
 	${LIBGNOMEVFS_CFLAGS} \
-	${LIBGTKHTML_CFLAGS}  \
 	${WEBKITGTK_CFLAGS}   \
 	${LIBGLADE_CFLAGS}    \
 	${LIBXML2_CFLAGS} \
@@ -134,7 +133,6 @@ gnotime_LDADD =          \
 	$(LIBDBUS_LIBS)       \
 	$(XSS_EXTENSION_LIBS) \
 	$(LIBGLADE_LIBS)      \
-	$(LIBGTKHTML_LIBS)    \
 	${WEBKITGTK_LIBS}   \
 	${LIBGNOMEVFS_LIBS}   \
 	$(LIBXML2_LIBS)       \

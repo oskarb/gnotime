@@ -51,11 +51,11 @@ GLIB_REQUIRED=2.14
 GTK_REQUIRED=2.12
 LIBGNOMEVFS_REQUIRED=2.0.0
 LIBGLADE_REQUIRED=2.0.0
-LIBGTKHTML_REQUIRED=3.0.0
 LIBXML2_REQUIRED=2.0.0
 SCROLLKEEPER_BUILD_REQUIRED=0.3.5
 LIBQOF_REQUIRED_MIN=0.6.0
 LIBDBUS_REQUIRED_MIN=0.74
+WEBKITGTK_REQUIRED=1.8.1
 
 dnl *****************************************
 dnl Check for guile
@@ -179,29 +179,9 @@ dnl *******************************
 dnl WebKitGTK
 dnl *******************************
 
-PKG_CHECK_MODULES(WEBKITGTK, webkit-1.0)
+PKG_CHECK_MODULES(WEBKITGTK, webkit-1.0 >= $WEBKITGTK_REQUIRED)
 AC_SUBST(WEBKITGTK_CFLAGS)
 AC_SUBST(WEBKITGTK_LIBS)
-
-
-dnl *******************************
-dnl gtkhtml -- ask pkgconfig for some variant of gtkhtml3
-dnl *******************************
-
-GTKHTMLPRESENT=no
-for GTKHTMLVER in 3.14 3.13 3.12 3.11 3.10 3.9 3.8 3.7 3.6 3.5 3.4 3.2 3.1 3.0 ; do
-  if $PKG_CONFIG --exists libgtkhtml-$GTKHTMLVER ; then
-	PKG_CHECK_MODULES(LIBGTKHTML, libgtkhtml-$GTKHTMLVER >= $LIBGTKHTML_REQUIRED)
-	GTKHTMLPRESENT=yes
-	break
-  fi
-done
-if test x$GTKHTMLPRESENT = x'no'; then
-	AC_ERROR([gtkhtml3 is needed in order to compile this program.])
-fi
-
-AC_SUBST(LIBGTKHTML_CFLAGS)
-AC_SUBST(LIBGTKHTML_LIBS)
 
 
 dnl ********************
