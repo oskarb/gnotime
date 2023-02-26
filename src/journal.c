@@ -1027,6 +1027,17 @@ html_hovering_over_link_cb (WebKitWebView *const web_view,
 	}
 }
 
+static gboolean
+context_menu_cb (WebKitWebView *const web_view,
+                 GtkWidget *default_menu,
+                 WebKitHitTestResult *hit_rest_result,
+                 gboolean triggered_with_keyboard, gpointer user_data)
+{
+	// Disable the (right-click) context menu.
+	return TRUE;
+}
+
+
 /* ============================================================== */
 /* HTML form (method=GET, POST) events */
 
@@ -1217,6 +1228,9 @@ do_show_report (const char * report, GttPlugin *plg,
 
 	g_signal_connect (G_OBJECT (wig->web_view), "hovering-over-link",
 	                  G_CALLBACK (html_hovering_over_link_cb), wig);
+
+	g_signal_connect (G_OBJECT (wig->web_view), "context-menu",
+	                  G_CALLBACK (context_menu_cb), wig);
 
 	g_signal_connect(G_OBJECT(wig->web_view), "focus_out_event",
 	                 G_CALLBACK(hover_loose_focus), wig);
